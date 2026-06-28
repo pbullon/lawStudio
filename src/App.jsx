@@ -8,6 +8,7 @@ import AppLayout      from './components/layout/AppLayout.jsx'
 import ClientesView    from './views/ClientesView.jsx'
 import AgendaView      from './views/AgendaView.jsx'
 import InmueblesView    from './views/InmueblesView.jsx'
+import ConfiguracionView from './views/ConfiguracionView.jsx'
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             <Route path="/clientes" element={<ClientesView />} />
             <Route path="/agenda" element={<AgendaView />} />
             <Route path="/inmuebles" element={<InmueblesView />} />
+            <Route path="/configuracion" element={<ConfiguracionView />} />
             {/* Próximas rutas van acá adentro */}
           </Route>
         </Route>

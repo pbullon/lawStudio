@@ -35,6 +35,8 @@ export const useAppStore = create(
         email: 'contacto@castellanos.com.ar',
       },
 
+      setStudioInfo: (info) => set({ studioInfo: info }),
+
     }),
     {
       name: 'legal-gestor-app',

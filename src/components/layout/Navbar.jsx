@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  Scale, LayoutDashboard, Users, Building2,
+  Settings, Scale, LayoutDashboard, Users, Building2,
   Calendar, Sun, Moon, Bell, Copy, LogOut, ChevronDown
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
@@ -53,6 +53,7 @@ const Navbar = () => {
     { to: '/clientes',  label: 'Clientes',  icon: Users },
     { to: '/inmuebles', label: 'Inmuebles', icon: Building2 },
     { to: '/agenda',    label: 'Agenda',    icon: Calendar },
+    { to: '/configuracion', label: 'Configuración', icon: Settings },
   ]
 
   return (
