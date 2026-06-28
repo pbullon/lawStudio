@@ -1,0 +1,18 @@
+/* src/index.css */
+/* En Tailwind v4, la configuración va acá directamente */
+
+/* Esta línea reemplaza las 3 directivas anteriores (@tailwind base/components/utilities) */
+@import "tailwindcss";
+
+/* Configuración del modo oscuro — reemplaza el "darkMode: 'class'" del config.js */
+@variant dark (&:where(.dark, .dark *));
+
+/* Fuente base para todo el cuerpo */
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Clase utilitaria para títulos elegantes */
+.font-display {
+  font-family: 'Playfair Display', serif;
+}
