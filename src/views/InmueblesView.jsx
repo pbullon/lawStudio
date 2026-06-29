@@ -2,17 +2,9 @@
 
 import { useState, useMemo } from 'react'
 import { Search, Plus, Pencil, FileText } from 'lucide-react'
-import { mockProperties } from '../data/mockProperties'
-import { mockClients }    from '../data/mockClients'
+import { useProperties } from '../hooks/useProperties'
+import { useClientes }   from '../hooks/useClientes'
 import InmuebleModal      from '../components/inmuebles/InmuebleModal.jsx'
-
-// ── Helper: nombre de cliente por ID ────────────────────────────────
-// Reutilizable en toda la vista para mostrar nombres en lugar de IDs
-const getNombreCliente = (id) => {
-  if (!id) return '—'
-  const cliente = mockClients.find(c => c.id === id)
-  return cliente?.nombre_completo ?? '—'
-}
 
 // ── Helper: badge de estado ──────────────────────────────────────────
 const BadgeEstado = ({ estado }) => {
@@ -41,6 +33,15 @@ const InmueblesView = () => {
   const [modalAbierto,         setModalAbierto]         = useState(false)
   const [tabInicialModal, setTabInicialModal] = useState('contrato')
 
+  const { propiedades, isLoading, guardarPropiedad } = useProperties()
+  const { clientes }                                 = useClientes()
+
+  const getNombreCliente = (id) => {
+  if (!id) return '—'
+  const cliente = clientes.find(c => c.id === id)
+  return cliente?.nombre_completo ?? '—'
+}
+
   // ── Opciones de filtro de estado ─────────────────────────────────
   const ESTADOS = ['Todos', 'Vigente', 'Por Vencer', 'Vencido', 'En Negociación', 'Sin Inquilino']
 
@@ -49,7 +50,7 @@ const InmueblesView = () => {
   const inmueblesFiltrados = useMemo(() => {
     const termino = busqueda.toLowerCase().trim()
 
-    return mockProperties.filter(inmueble => {
+    return propiedades.filter(inmueble => {
 
       // Filtro por estado
       const pasaEstado = filtroEstado === 'Todos' || inmueble.estado_contrato === filtroEstado
@@ -89,10 +90,21 @@ const InmueblesView = () => {
     setTabInicialModal('contrato')
   }
 
-  const handleGuardarInmueble = (datos) => {
-    console.log('Inmueble guardado:', datos)
-    // En Fase final: llamada a Supabase acá
+  const handleGuardarInmueble = async (datos) => {
+    const result = await guardarPropiedad(datos, inmuebleSeleccionado?.id)
+  if (result.success) {
+    handleCerrarModal()
   }
+  }
+
+  // ── Estado de carga ───────────────────────────────────────────────
+if (isLoading) {
+  return (
+    <div className="p-8 text-center text-slate-500 dark:text-slate-400">
+      Cargando propiedades...
+    </div>
+  )
+}
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">

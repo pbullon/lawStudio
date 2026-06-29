@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { mockEvents } from '../data/mockEvents.js'
+import { useEventos } from '../hooks/useEventos'
 import EventoModal from '../components/agenda/EventoModal.jsx'
 
 // ── Helper: colores por tipo de evento ──────────────────────────────
@@ -91,6 +91,8 @@ const AgendaView = () => {
   const [fechaInicialModal,  setFechaInicialModal]  = useState('')
   const [modalAbierto,       setModalAbierto]       = useState(false)
 
+  const { eventos, guardarEvento } = useEventos()
+
   // ── Navegación entre meses ───────────────────────────────────────
   const irAlMesAnterior = () => {
     if (mesActual === 0) {
@@ -125,7 +127,7 @@ const AgendaView = () => {
   // Construimos un objeto { "2026-06-17": [evento1, evento2] }
   // para buscar eventos de un día en O(1) en lugar de filtrar el array completo
   const eventosPorFecha = useMemo(() => {
-    return mockEvents.reduce((acc, evento) => {
+    return eventos.reduce((acc, evento) => {
       if (!acc[evento.fecha]) acc[evento.fecha] = []
       acc[evento.fecha].push(evento)
       return acc
@@ -152,9 +154,11 @@ const AgendaView = () => {
     setFechaInicialModal('')
   }
 
-  const handleGuardarEvento = (datos) => {
-    console.log('Evento guardado:', datos)
-    // En Fase final: llamada a Supabase acá
+  const handleGuardarEvento = async (datos) => {
+    const result = await guardarEvento(datos, eventoSeleccionado?.id)
+      if (result.success) {
+      handleCerrarModal()
+    }
   }
 
   return (

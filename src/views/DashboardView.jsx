@@ -3,8 +3,9 @@
 import { Users, Building2, TrendingUp, AlertTriangle, Plus, CheckSquare, Square } from 'lucide-react'
 import { useState } from 'react'
 import { useAuthStore } from '../store/authStore'
-import { mockClients }    from '../data/mockClients'
-import { mockProperties } from '../data/mockProperties'
+import { useClientes }   from '../hooks/useClientes'
+import { useProperties } from '../hooks/useProperties'
+import { useEventos }    from '../hooks/useEventos'
 
 // ── Subcomponente: KPI Card ──────────────────────────────────────────
 // Lo definimos acá por ahora. En la Fase 5 lo movemos a components/dashboard/
@@ -23,20 +24,6 @@ const KpiCard = ({ icon: Icon, label, value, subtitle, iconBg }) => (
   </div>
 )
 
-// ── Datos mock de eventos/alertas ────────────────────────────────────
-const mockAlerts = {
-  reuniones: [
-    { id: 1, titulo: 'Firma boleto · A. Vázquez',       fecha: '24 de jun de 2026', urgencia: 'hoy' },
-    { id: 2, titulo: 'Reunión Bertolino · Cartera 2026', fecha: '01 de jul de 2026', urgencia: '7d'  },
-  ],
-  vencimientos: [
-    { id: 3, titulo: 'Vencimiento contrato · Galpón Santo Tomé', fecha: '17 de jun de 2026', diasVencido: 7  },
-    { id: 4, titulo: 'Cobro alquiler · Bv. Pellegrini 2845',     fecha: '20 de jun de 2026', diasVencido: 4  },
-    { id: 5, titulo: 'Cobro alquiler · Of. Freyre 3100',         fecha: '20 de jun de 2026', diasVencido: 4  },
-    { id: 6, titulo: 'Vencimiento contrato · San Martín 2780',   fecha: '22 de jun de 2026', diasVencido: 2  },
-  ],
-}
-
 const mockTareas = [
   { id: 1, texto: 'Llamar a escribanía Reutemann por escritura Vázquez', hecha: false },
   { id: 2, texto: 'Enviar liquidación de expensas a Mendoza',            hecha: true  },
@@ -48,6 +35,72 @@ const mockTareas = [
 const DashboardView = () => {
   const { user } = useAuthStore()
   const [tareas, setTareas] = useState(mockTareas)
+
+    // ── Datos reales desde Supabase ──────────────────────────────────
+  // Llamamos a los tres hooks — cada uno maneja su propio estado de carga
+  const { clientes,    isLoading: cargandoClientes    } = useClientes()
+  const { propiedades, isLoading: cargandoPropiedades } = useProperties()
+  const { eventos,     isLoading: cargandoEventos     } = useEventos()
+
+  // ── Calcular alertas desde eventos reales ────────────────────────
+// "hoy" en formato YYYY-MM-DD para comparar con las fechas de eventos
+const hoyStr = new Date().toISOString().split('T')[0]
+
+// Fecha límite: hoy + 7 días
+const en7Dias = new Date()
+en7Dias.setDate(en7Dias.getDate() + 7)
+const en7DiasStr = en7Dias.toISOString().split('T')[0]
+
+// Formatear fecha para mostrar en pantalla
+const formatearFecha = (fechaStr) => {
+  return new Date(fechaStr + 'T00:00:00')
+    .toLocaleDateString('es-AR', {
+      day: 'numeric', month: 'long', year: 'numeric'
+    })
+}
+
+// Reuniones y audiencias en los próximos 7 días
+const reunionesPróximas = eventos.filter(e =>
+    (e.tipo === 'reunion' || e.tipo === 'audiencia') &&
+    e.fecha >= hoyStr &&
+    e.fecha <= en7DiasStr
+  )
+  .map(e => ({
+    id:       e.id,
+    titulo:   e.titulo,
+    fecha:    formatearFecha(e.fecha),
+    urgencia: e.fecha === hoyStr ? 'hoy' : '7d',
+  }))
+
+// Vencimientos y cobros que ya pasaron o son hoy
+const vencimientosCriticos = eventos
+  .filter(e =>
+    (e.tipo === 'vencimiento' || e.tipo === 'cobro') &&
+    e.fecha <= hoyStr
+  )
+  .map(e => {
+    // Calcular cuántos días hace que venció
+    const msVencido  = new Date(hoyStr) - new Date(e.fecha + 'T00:00:00')
+    const diasVencido = Math.floor(msVencido / (1000 * 60 * 60 * 24))
+    return {
+      id:           e.id,
+      titulo:       e.titulo,
+      fecha:        formatearFecha(e.fecha),
+      diasVencido,
+    }
+  })
+
+  // ── KPIs calculados desde datos reales ──────────────────────────
+  // Cada vez que Supabase responda y los arrays se actualicen,
+  // estos valores se recalculan automáticamente
+
+  const clientesActivos    = clientes.length
+
+  const propiedadesTotales = propiedades.length
+
+  const rentaActiva = propiedades
+    .filter(p => p.estado_contrato === 'Vigente')
+    .reduce((sum, p) => sum + (p.monto_alquiler ?? 0), 0)
 
   // ── Helper: saludo según hora del día ──────────────────────────
   const getSaludo = () => {
@@ -71,13 +124,22 @@ const DashboardView = () => {
     )
   }
 
-  // ── Cálculos de KPIs desde mock data ───────────────────────────
-  const clientesActivos   = mockClients.length
-  const propiedadesTotales = mockProperties.length
-  const rentaActiva = mockProperties
-    .filter(p => p.estado_contrato === 'Vigente')
-    .reduce((sum, p) => sum + p.monto_alquiler, 0)
-  const vencimientosCriticos = mockAlerts.vencimientos.length
+  // ── Estado de carga global ────────────────────────────────────────
+// El dashboard espera a que TODOS los datos estén listos
+  const estaCargando = cargandoClientes || cargandoPropiedades || cargandoEventos
+
+  if (estaCargando) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Cargando panel...
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
@@ -124,7 +186,7 @@ const DashboardView = () => {
         <KpiCard
           icon={AlertTriangle}
           label="Vencimientos Críticos"
-          value={vencimientosCriticos}
+          value={vencimientosCriticos.length}
           subtitle="Próximos 3 días"
           iconBg="bg-red-500"
         />
@@ -148,7 +210,7 @@ const DashboardView = () => {
                 Reuniones y Audiencias · 7 días
               </p>
               <div className="space-y-2">
-                {mockAlerts.reuniones.map(item => (
+                {reunionesPróximas.map(item => (
                   <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
                     <div>
                       <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.titulo}</p>
@@ -173,7 +235,7 @@ const DashboardView = () => {
                 Vencimientos y Pagos
               </p>
               <div className="space-y-2">
-                {mockAlerts.vencimientos.map(item => (
+                {vencimientosCriticos.map(item => (
                   <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
                     <div>
                       <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.titulo}</p>
