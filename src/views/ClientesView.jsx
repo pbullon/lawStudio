@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { Search, Plus, Pencil } from 'lucide-react'
-import { mockClients } from '../data/mockClients'
+import { useClientes } from '../hooks/useClientes'
 import ClienteModal from '../components/clientes/ClienteModal.jsx'
 
 // ── Helper: genera iniciales y color de avatar ───────────────────────
@@ -32,29 +32,25 @@ const getInitials = (nombre) => {
 const ClientesView = () => {
 
     // Estado local para el buscador
+    const { clientes, isLoading, error, guardarCliente } = useClientes()
     const [busqueda, setBusqueda] = useState('')
 
     // 2. Agregar estado dentro del componente ClientesView
     const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
     const [modalAbierto, setModalAbierto] = useState(false)
 
-    // ── Filtrado con useMemo ─────────────────────────────────────────
-    // useMemo evita que el filtro se recalcule en cada render.
-    // Solo se recalcula cuando cambia "busqueda" o "mockClients".
+    // El useMemo ahora filtra "clientes" en lugar de "mockClients"
     const clientesFiltrados = useMemo(() => {
-    const termino = busqueda.toLowerCase().trim()
-
-    if (!termino) return mockClients
-
-    return mockClients.filter(cliente =>
-      // Buscamos en varios campos a la vez
-      cliente.nombre_completo.toLowerCase().includes(termino) ||
-      cliente.dni?.toLowerCase().includes(termino)            ||
-      cliente.cuit_cuil?.toLowerCase().includes(termino)      ||
-      cliente.email?.toLowerCase().includes(termino)          ||
-      cliente.profesion?.toLowerCase().includes(termino)
-    )
-  }, [busqueda])
+      const termino = busqueda.toLowerCase().trim()
+      if (!termino) return clientes
+      return clientes.filter(cliente =>
+        cliente.nombre_completo.toLowerCase().includes(termino) ||
+        cliente.dni?.toLowerCase().includes(termino)            ||
+        cliente.cuit_cuil?.toLowerCase().includes(termino)      ||
+        cliente.email?.toLowerCase().includes(termino)          ||
+        cliente.profesion?.toLowerCase().includes(termino)
+      )
+    }, [busqueda, clientes]) // ← "clientes" reemplaza "mockClients"
 
      // 3. Handler para abrir el modal
     const handleEditarCliente = (cliente) => {
@@ -68,9 +64,11 @@ const ClientesView = () => {
     }
 
     // 4. Handler para guardar (por ahora solo log — en Fase final conecta con Supabase)
-    const handleGuardarCliente = (datosActualizados) => {
-    console.log('Cliente actualizado:', datosActualizados)
-    // Acá irá la llamada a Supabase cuando conectemos el backend
+    const handleGuardarCliente = async (datos) => {
+      const resultado = await guardarCliente(datos, clienteSeleccionado?.id)
+      if (resultado.success) {
+        handleCerrarModal()
+      }
     }
 
   return (
@@ -104,8 +102,18 @@ const ClientesView = () => {
         />
       </div>
 
+      
+  
       {/* ── Tabla ── */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        {/* ── Estado de carga previo a la tabla ── */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : error ? (
+        <div className="text-center py-20 text-red-500 text-sm">{error}</div>
+      ) : (
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-200 dark:border-slate-700">
@@ -199,8 +207,10 @@ const ClientesView = () => {
               ))
             )}
           </tbody>
-        </table>
+        </table> 
+        )}
       </div>
+      
 
       {/* ── Modal de cliente ── */}
       {/* Va FUERA de la tabla pero DENTRO del div principal */}

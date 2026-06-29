@@ -8,9 +8,17 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useAppStore } from '../../store/appStore'
+import NotificacionesPanel from './NotificacionesPanel.jsx'
+import { getEventosProximos } from '../../utils/notificaciones'
 
 const Navbar = () => {
   const navigate = useNavigate()
+
+  // 2. Dentro del componente Navbar, agregá este estado
+  const [notifAbiertas, setNotifAbiertas] = useState(false)
+
+  // 3. Calculá el total de notificaciones
+  const totalNotificaciones = getEventosProximos(3).length
 
   // Traemos lo que necesitamos de cada store
   // Solo nos suscribimos a los campos que usamos — optimización básica de Zustand
@@ -117,14 +125,29 @@ const Navbar = () => {
           {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 
-        {/* Campana de notificaciones (funcionalidad completa en Fase 5) */}
-        <button className="relative p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-          <Bell className="w-4 h-4" />
-          {/* Badge con número de notificaciones */}
-          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-            4
-          </span>
-        </button>
+        {/* Campana de notificaciones */}
+        <div className="relative">
+          <button
+            onClick={() => setNotifAbiertas(prev => !prev)}
+            className="relative p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            title="Notificaciones"
+          >
+            <Bell className="w-4 h-4" />
+
+            {/* Badge con número — solo si hay eventos próximos */}
+            {totalNotificaciones > 0 && (
+              <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {totalNotificaciones > 9 ? '9+' : totalNotificaciones}
+              </span>
+            )}
+          </button>
+
+        {/* Panel desplegable */}
+          <NotificacionesPanel
+            isOpen={notifAbiertas}
+            onClose={() => setNotifAbiertas(false)}
+          />
+        </div>
 
         {/* Dropdown de perfil */}
         <div className="relative">
